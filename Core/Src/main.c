@@ -535,7 +535,7 @@ int main(void)
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 0);
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);// BOOT
 
-   printf("\r ------ Start ----- \r\n");
+   printf("\r ------ Start Bootooader ----- \r\n");
    HAL_UARTEx_ReceiveToIdle_IT(&huart2, rx_buff, sizeof rx_buff);
 
   /* USER CODE END 2 */
