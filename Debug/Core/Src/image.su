@@ -1,0 +1,2 @@
+../Core/Src/image.c:14:20:image_get_header	24	static
+../Core/Src/image.c:40:5:image_validate	32	static

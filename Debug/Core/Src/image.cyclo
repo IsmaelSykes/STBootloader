@@ -1,0 +1,2 @@
+image.c:14:20:image_get_header	5
+image.c:40:5:image_validate	4
