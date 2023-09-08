@@ -55,9 +55,10 @@
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim15;
 
 UART_HandleTypeDef huart2;
-UART_HandleTypeDef huart6;
+UART_HandleTypeDef huart5;
 
 /* USER CODE BEGIN PV */
 
@@ -67,10 +68,12 @@ UART_HandleTypeDef huart6;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_USART6_UART_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_USART5_UART_Init(void);
+static void MX_TIM15_Init(void);
 /* USER CODE BEGIN PFP */
+static void MX_GPIO_Init_user(void);
 
 /* USER CODE END PFP */
 
@@ -230,7 +233,7 @@ uint32_t clone_rom(uint32_t Firmware_zise)
 		printf("\033\143");
 		for(int q = 0; q<=k; q++)
 		{
-			printf("🐾");
+			printf("�?�");
 			HAL_Delay(100);
 		}
 		printf("\r\n");
@@ -324,7 +327,7 @@ uint32_t update_firmware (void)
 		crc = CRC16_X25(&rx_buff[8], 512, 0);
 		crc_rec = CRC16_X25(&rx_buff[8], 512, crc_rec);
 		printf(" \r crc computed: %X \r\n",crc);
-		printf(" \r crc_rec: %X \r\n",crc_rec);
+		printf(" \r crc_rec: %lX \r\n",crc_rec);
 
 		if(crc == crc_part)
 		{
@@ -332,7 +335,7 @@ uint32_t update_firmware (void)
 
 		  memset(buffer,'\0',sizeof(buffer));
 		  memset(strnum,'\0',sizeof(strnum));
-		  snprintf(strnum,sizeof(strnum), "%d",index_page);
+		  snprintf(strnum,sizeof(strnum), "%ld",index_page);
 		  //printf("strnum: %s, len: %d \n",strnum,strlen(strnum));
 		  memcpy(&buffer[0], OK, sizeof(OK));
 		  memcpy(&buffer[sizeof(OK)], strnum,strlen(strnum));
@@ -349,7 +352,7 @@ uint32_t update_firmware (void)
 			i = i;
 			memset(buffer,'\0',sizeof(buffer));
 		  memset(strnum,'\0',sizeof(strnum));
-		  snprintf(strnum,sizeof(strnum), "%d",index_page);
+		  snprintf(strnum,sizeof(strnum), "%ld",index_page);
 		  memcpy(&buffer[0], ERR, sizeof(ERR));
 		  memcpy(&buffer[sizeof(ERR)], strnum,strlen(strnum));
 		  printf(" \r buffer: %s\r\n",buffer);
@@ -368,7 +371,7 @@ uint32_t update_firmware (void)
 		crc = CRC16_X25(&rx_buff[8], offset, 0);//offset
 		crc_rec = CRC16_X25(&rx_buff[8], offset, crc_rec);
 		printf(" \r crc computed: %X \r\n",crc);
-		printf(" \r crc_rec: %X \r\n",crc_rec);
+		printf(" \r crc_rec: %lX \r\n",crc_rec);
 
 
 		if(crc == crc_part)
@@ -451,7 +454,7 @@ __attribute__( (naked, noreturn) ) static void BootJumpASM(uint32_t PC, uint32_t
 	");
 }
 
-static void image_start(const image_hdr_t *hdr) {
+ void image_start(const image_hdr_t *hdr) {
     uint8_t i = 0;
 	/* Disable interrupts */
 	//Disable IRQ
@@ -494,6 +497,8 @@ static void image_start(const image_hdr_t *hdr) {
 
 //int  __attribute__((section(".shared_mem")))contador = 0;
 
+const image_hdr_t *hdr = NULL;
+
 /* USER CODE END 0 */
 
 /**
@@ -519,21 +524,23 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+  MX_GPIO_Init_user();
 
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  MX_GPIO_Init();
+  //MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_USART6_UART_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
+  MX_USART5_UART_Init();
+  MX_TIM15_Init();
   /* USER CODE BEGIN 2 */
-   RetargetInit(&huart6);
-   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 1);
+   RetargetInit(&huart5);
+   /*HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 1);
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, 0);
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 0);
-   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);// BOOT
+   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);// BOOT/*/
 
    printf("\r ------ Start Bootooader ----- \r\n");
    HAL_UARTEx_ReceiveToIdle_IT(&huart2, rx_buff, sizeof rx_buff);
@@ -542,20 +549,22 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
 	shared_memory_init();
 	timer_flag = 0;
 	HAL_TIM_Base_Start_IT(&htim1);
+	HAL_TIM_Base_Start_IT(&htim15);
 
 
 	while (1)
 	{
 		HAL_Delay(5);
-		boot = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_11);// 1/0
+		boot = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_14);// 1/0
 		printf("\r boot: %d \r\n",boot);
 		bootloader = timer_flag & boot;
 		if(bootloader)
 		{
-			printf(" \r App \r\n");
+			printf(" App \n\r");
 			HAL_TIM_Base_Stop_IT(&htim1);
 			shared_mem_set_app_update_requested(false);
 		}
@@ -567,7 +576,7 @@ int main(void)
 		}
 
 
-		const image_hdr_t *hdr = NULL;
+
 
 		if (shared_mem_is_bl_upd_requested()) {//bootloader
 			hdr = image_get_header(IMAGE_SLOT_2); // get address y magic
@@ -645,17 +654,17 @@ int main(void)
 			shared_mem_set_app_update_requested(false);
 			shared_mem_set_update();
 			printf("\r shared_mem_get_update: %d \r\n",shared_mem_get_update());
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 1);
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, 0);
-			for(int n = 0; n <15; n++)
+			//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 1);
+			//HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, 0);
+			/*for(int n = 0; n <15; n++)
 			{
 				HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_7);
 				HAL_Delay(200);
-			}
+			}*/
 
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);//resetea el uC
-			HAL_Delay(100);
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+			//HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);//resetea el uC
+			//HAL_Delay(100);
+			//HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
 			HAL_NVIC_SystemReset();
 		}
 	}
@@ -810,6 +819,52 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM15 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM15_Init(void)
+{
+
+  /* USER CODE BEGIN TIM15_Init 0 */
+
+  /* USER CODE END TIM15_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM15_Init 1 */
+
+  /* USER CODE END TIM15_Init 1 */
+  htim15.Instance = TIM15;
+  htim15.Init.Prescaler = 16000-1;
+  htim15.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim15.Init.Period = 60000;
+  htim15.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim15.Init.RepetitionCounter = 0;
+  htim15.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim15) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim15, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim15, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM15_Init 2 */
+
+  /* USER CODE END TIM15_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -858,38 +913,38 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
-  * @brief USART6 Initialization Function
+  * @brief USART5 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_USART6_UART_Init(void)
+static void MX_USART5_UART_Init(void)
 {
 
-  /* USER CODE BEGIN USART6_Init 0 */
+  /* USER CODE BEGIN USART5_Init 0 */
 
-  /* USER CODE END USART6_Init 0 */
+  /* USER CODE END USART5_Init 0 */
 
-  /* USER CODE BEGIN USART6_Init 1 */
+  /* USER CODE BEGIN USART5_Init 1 */
 
-  /* USER CODE END USART6_Init 1 */
-  huart6.Instance = USART6;
-  huart6.Init.BaudRate = 115200;
-  huart6.Init.WordLength = UART_WORDLENGTH_8B;
-  huart6.Init.StopBits = UART_STOPBITS_1;
-  huart6.Init.Parity = UART_PARITY_NONE;
-  huart6.Init.Mode = UART_MODE_TX_RX;
-  huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart6.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart6.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart6.Init.ClockPrescaler = UART_PRESCALER_DIV1;
-  huart6.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart6) != HAL_OK)
+  /* USER CODE END USART5_Init 1 */
+  huart5.Instance = USART5;
+  huart5.Init.BaudRate = 115200;
+  huart5.Init.WordLength = UART_WORDLENGTH_8B;
+  huart5.Init.StopBits = UART_STOPBITS_1;
+  huart5.Init.Parity = UART_PARITY_NONE;
+  huart5.Init.Mode = UART_MODE_TX_RX;
+  huart5.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart5.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart5.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart5.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart5.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart5) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN USART6_Init 2 */
+  /* USER CODE BEGIN USART5_Init 2 */
 
-  /* USER CODE END USART6_Init 2 */
+  /* USER CODE END USART5_Init 2 */
 
 }
 
@@ -913,10 +968,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_1, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(RST_COMM_GPIO_Port, RST_COMM_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(RST_COMM_GPIO_Port, RST_COMM_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PA7 */
   GPIO_InitStruct.Pin = GPIO_PIN_7;
@@ -925,23 +977,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB0 PB1 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : BOOT_Pin */
-  GPIO_InitStruct.Pin = BOOT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(BOOT_GPIO_Port, &GPIO_InitStruct);
-
   /*Configure GPIO pin : RST_COMM_Pin */
   GPIO_InitStruct.Pin = RST_COMM_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(RST_COMM_GPIO_Port, &GPIO_InitStruct);
 
@@ -961,7 +1000,56 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
      {
 	   dato_recivido = 1;// offset is 0 or page integers
      }
+
+   if(htim->Instance == TIM15)
+     {
+		printf("TIMER15\r\n\n");
+
+		//printf("Jumping to application\r\n\n");
+		//shared_mem_increment_boot_counter();
+		//printf("Boot count: %d \r\n",shared_mem_get_boot_counter());
+		//image_start(hdr);
+     }
 }
+
+
+
+static void MX_GPIO_Init_user(void)
+{
+	  GPIO_InitTypeDef GPIO_InitStruct = {0};
+	/* USER CODE BEGIN MX_GPIO_Init_1 */
+	/* USER CODE END MX_GPIO_Init_1 */
+
+	  /* GPIO Ports Clock Enable */
+	  __HAL_RCC_GPIOC_CLK_ENABLE();
+	  __HAL_RCC_GPIOA_CLK_ENABLE();
+	  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+	  /*Configure GPIO pin Output Level */
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7|GPIO_PIN_14, GPIO_PIN_RESET);
+
+	  /*Configure GPIO pin Output Level */
+	  HAL_GPIO_WritePin(RST_COMM_GPIO_Port, RST_COMM_Pin, GPIO_PIN_RESET);
+
+
+	  /*Configure GPIO pin : RST_COMM_Pin */
+	  GPIO_InitStruct.Pin = RST_COMM_Pin;
+	  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	  GPIO_InitStruct.Pull = GPIO_NOPULL;
+	  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	  HAL_GPIO_Init(RST_COMM_GPIO_Port, &GPIO_InitStruct);
+
+	/* USER CODE BEGIN MX_GPIO_Init_2 */
+	/* USER CODE END MX_GPIO_Init_2 */
+  /*Configure GPIO pin : PA14 */
+  GPIO_InitStruct.Pin = GPIO_PIN_14;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+
+}
+
 /* USER CODE END 4 */
 
 /**

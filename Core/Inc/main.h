@@ -57,9 +57,7 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define BOOT_Pin GPIO_PIN_11
-#define BOOT_GPIO_Port GPIOB
-#define RST_COMM_Pin GPIO_PIN_7
+#define RST_COMM_Pin GPIO_PIN_8
 #define RST_COMM_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
