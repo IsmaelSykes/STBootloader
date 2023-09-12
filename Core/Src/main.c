@@ -226,14 +226,14 @@ uint32_t clone_rom(uint32_t Firmware_zise)
 	uint32_t rows = Firmware_zise/8;
 	uint32_t offset = Firmware_zise%8;
 	uint32_t _index = 0;
-	printf("\r Clear app rom \r\n");
 
 	for(int k = 0; k <10; k++)
 	{
 		printf("\033\143");
+		printf("Clear app rom");
 		for(int q = 0; q<=k; q++)
 		{
-			printf("�?�");
+			printf(".");
 			HAL_Delay(100);
 		}
 		printf("\r\n");
@@ -244,6 +244,18 @@ uint32_t clone_rom(uint32_t Firmware_zise)
 	printf("\r ------ Clone to slot 1 ---------- \r\n");
 	printf("\r rows: %ld \r\n",rows);
 	printf("\r offset: %ld \r\n",offset);
+	for(int k = 0; k <10; k++)
+	{
+		printf("\033\143");
+		printf(" waiting ");
+		for(int q = 0; q<=k; q++)
+		{
+			printf(".");
+			HAL_Delay(100);
+		}
+		printf("\r\n");
+	}
+
 	HAL_FLASH_Unlock();
     for(uint32_t i = 0; i<=rows-1; i++)// 12288 /8 -1 = =rows,   11532/8 =
     {
@@ -253,8 +265,8 @@ uint32_t clone_rom(uint32_t Firmware_zise)
   	  memcpy(&double_word,RDAddr,8);
   	  HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD,app_rom+_index,double_word);
   	  crc_temp = CRC16_X25(RDAddr, 8, crc_temp);
-	  printf(" \r crc parts_app_rom: %04X \n",crc_temp);
-	  print_double_word(loader_rom+_index,&double_word);
+	  //printf(" \r crc parts_app_rom: %04X \n",crc_temp);
+	  //print_double_word(loader_rom+_index,&double_word);
     }
     if(offset!=0)
     {
@@ -265,8 +277,8 @@ uint32_t clone_rom(uint32_t Firmware_zise)
 		memcpy(&double_word,RDAddr,offset);
 		HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD,app_rom+_index,double_word);
 		crc_temp = CRC16_X25(&double_word,offset, crc_temp);
-		printf(" \r crc parts_app_rom: %04X \n",crc_temp);
-		print_double_word(loader_rom+_index,&double_word);
+		//printf(" \r crc parts_app_rom: %04X \n",crc_temp);
+		//print_double_word(loader_rom+_index,&double_word);
     }
     HAL_FLASH_Lock();
 
@@ -524,7 +536,6 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-  MX_GPIO_Init_user();
 
   /* USER CODE END SysInit */
 
@@ -536,6 +547,7 @@ int main(void)
   MX_USART5_UART_Init();
   MX_TIM15_Init();
   /* USER CODE BEGIN 2 */
+  MX_GPIO_Init_user();
    RetargetInit(&huart5);
    /*HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 1);
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, 0);
@@ -574,9 +586,6 @@ int main(void)
 			HAL_TIM_Base_Stop_IT(&htim1);
 			shared_mem_set_app_update_requested(true);
 		}
-
-
-
 
 		if (shared_mem_is_bl_upd_requested()) {//bootloader
 			hdr = image_get_header(IMAGE_SLOT_2); // get address y magic
@@ -640,9 +649,6 @@ int main(void)
 
 	else if (shared_mem_is_app_upd_requested())
 	{
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 1);
 
 		if (update_firmware() == 0)
 		{
@@ -653,18 +659,16 @@ int main(void)
 			shared_mem_clear_ota_info();
 			shared_mem_set_app_update_requested(false);
 			shared_mem_set_update();
-			printf("\r shared_mem_get_update: %d \r\n",shared_mem_get_update());
-			//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 1);
-			//HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, 0);
-			/*for(int n = 0; n <15; n++)
-			{
-				HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_7);
-				HAL_Delay(200);
-			}*/
+			printf("shared_mem_get_update: %d \n\r",shared_mem_get_update());
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 0);//resetea el uC
+			HAL_Delay(2000);
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 1);
+			printf("Reset COMM \n\r");
+			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, 0);//resetea el uC
+			HAL_Delay(2000);
+			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, 1);
+			printf("Shutdown COMM 🐮 \n\r");
 
-			//HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);//resetea el uC
-			//HAL_Delay(100);
-			//HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
 			HAL_NVIC_SystemReset();
 		}
 	}
@@ -963,19 +967,20 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LTE_ON_GPIO_Port, LTE_ON_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(RST_COMM_GPIO_Port, RST_COMM_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(RST_COMM_GPIO_Port, RST_COMM_Pin, GPIO_PIN_SET);
 
-  /*Configure GPIO pin : PA7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7;
+  /*Configure GPIO pin : LTE_ON_Pin */
+  GPIO_InitStruct.Pin = LTE_ON_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(LTE_ON_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RST_COMM_Pin */
   GPIO_InitStruct.Pin = RST_COMM_Pin;
@@ -1022,14 +1027,21 @@ static void MX_GPIO_Init_user(void)
 
 	  /* GPIO Ports Clock Enable */
 	  __HAL_RCC_GPIOC_CLK_ENABLE();
+	  __HAL_RCC_GPIOD_CLK_ENABLE();
 	  __HAL_RCC_GPIOA_CLK_ENABLE();
 	  __HAL_RCC_GPIOB_CLK_ENABLE();
 
 	  /*Configure GPIO pin Output Level */
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7|GPIO_PIN_14, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_SET);
 
 	  /*Configure GPIO pin Output Level */
-	  HAL_GPIO_WritePin(RST_COMM_GPIO_Port, RST_COMM_Pin, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(RST_COMM_GPIO_Port, RST_COMM_Pin, GPIO_PIN_SET);
+
+	  GPIO_InitStruct.Pin = LTE_ON_Pin;
+	  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	  GPIO_InitStruct.Pull = GPIO_NOPULL;
+	  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	  HAL_GPIO_Init(LTE_ON_GPIO_Port, &GPIO_InitStruct);
 
 
 	  /*Configure GPIO pin : RST_COMM_Pin */
@@ -1044,7 +1056,7 @@ static void MX_GPIO_Init_user(void)
   /*Configure GPIO pin : PA14 */
   GPIO_InitStruct.Pin = GPIO_PIN_14;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 
