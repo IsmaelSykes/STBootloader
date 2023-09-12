@@ -85,8 +85,8 @@ bool dato_recivido=false, bootloader = false;
 uint32_t counter = 0, pages = 0,offset = 0, n_bytes=0,rows = 0;
 uint8_t rx_buff[520]={0x00};//
 uint32_t FW_SIZE = 0, CRC_16 = 0, index_page = 0;
-uint16_t crc = 0,crc_temp = 0;
-uint16_t a = 0, boot = 0,timer_flag=0;
+uint16_t crc = 0,crc_temp = 0, flag_timer = 0;
+uint16_t a = 0, boot = 0,timer_flag=0, flag_break = 0;
 uint32_t crc_part = 0, crc_rec;
 
 #define STRINGIFY(x) #x
@@ -295,7 +295,13 @@ void wait(void)
 	 {
 		 printf("\r waiting... \r\n");
 		 HAL_Delay(100);
+		 if(flag_break)
+		 {
+			 break;
+		 }
 	 }
+	HAL_TIM_Base_Stop_IT(&htim15);
+
 }
 
 uint32_t update_firmware (void)
@@ -311,6 +317,10 @@ uint32_t update_firmware (void)
 	 HAL_UART_Transmit(&huart2,"FZ\n", (sizeof("FZ\n")-1),500);// begin
 	 printf("\r Send FZ ... \r\n");
 	 wait();
+	 if(flag_break)
+	 {
+		 return 1;
+	 }
 	 dato_recivido = false;
 
 	memcpy(&FW_SIZE,&rx_buff[0],4);
@@ -580,14 +590,20 @@ int main(void)
 			HAL_TIM_Base_Stop_IT(&htim1);
 			shared_mem_set_app_update_requested(false);
 		}
-		else
+		 if(bootloader == 0)
 		{
 			printf(" \r Bootloader \r\n");
 			HAL_TIM_Base_Stop_IT(&htim1);
 			shared_mem_set_app_update_requested(true);
 		}
 
-		if (shared_mem_is_bl_upd_requested()) {//bootloader
+	    if((flag_break == 1) && (bootloader==0))
+		{
+			printf(" \r App Timer \r\n");
+			shared_mem_set_app_update_requested(false);
+		}
+
+	if (shared_mem_is_bl_upd_requested()) {//bootloader
 			hdr = image_get_header(IMAGE_SLOT_2); // get address y magic
 
 		// Load the updater (apparom)
@@ -749,9 +765,9 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 16-1;
+  htim1.Init.Prescaler = 16000-1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 500;
+  htim1.Init.Period = 200;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -843,7 +859,7 @@ static void MX_TIM15_Init(void)
   htim15.Instance = TIM15;
   htim15.Init.Prescaler = 16000-1;
   htim15.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim15.Init.Period = 60000;
+  htim15.Init.Period = 15000;
   htim15.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim15.Init.RepetitionCounter = 0;
   htim15.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -1009,11 +1025,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
    if(htim->Instance == TIM15)
      {
 		printf("TIMER15\r\n\n");
+		printf("flag_timer: %d\r\n\n",flag_timer);
+		if(flag_timer)
+		{
+			flag_break = 1;
+			printf("flag_break: %d\r\n\n",flag_break);
+		}
+		flag_timer = 1;
 
-		//printf("Jumping to application\r\n\n");
-		//shared_mem_increment_boot_counter();
-		//printf("Boot count: %d \r\n",shared_mem_get_boot_counter());
-		//image_start(hdr);
      }
 }
 
