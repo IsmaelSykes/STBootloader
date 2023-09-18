@@ -58,7 +58,7 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim15;
 
 UART_HandleTypeDef huart2;
-UART_HandleTypeDef huart5;
+UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
 
@@ -68,13 +68,11 @@ UART_HandleTypeDef huart5;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_USART6_UART_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
-static void MX_USART5_UART_Init(void);
 static void MX_TIM15_Init(void);
 /* USER CODE BEGIN PFP */
-static void MX_GPIO_Init_user(void);
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -87,7 +85,7 @@ uint8_t rx_buff[520]={0x00};//
 uint32_t FW_SIZE = 0, CRC_16 = 0, index_page = 0;
 uint16_t crc = 0,crc_temp = 0, flag_timer = 0;
 uint16_t a = 0, boot = 0,timer_flag=0, flag_break = 0;
-uint32_t crc_part = 0, crc_rec;
+uint32_t crc_part = 0, crc_rec = 0;
 
 #define STRINGIFY(x) #x
 #define ADD_QUOTES(y) STRINGIFY(y)
@@ -314,6 +312,7 @@ uint32_t update_firmware (void)
 	 uint8_t ERR[4] = {0x45,0x52,0x52,0x20};
 	 uint32_t cmd7 [2] = {0x00,0x00};
 	 clear_loader_rom();
+	 //CMD 1
 	 HAL_UART_Transmit(&huart2,"FZ\n", (sizeof("FZ\n")-1),500);// begin
 	 printf("\r Send FZ ... \r\n");
 	 wait();
@@ -322,6 +321,7 @@ uint32_t update_firmware (void)
 		 return 1;
 	 }
 	 dato_recivido = false;
+	 //CMD2
 
 	memcpy(&FW_SIZE,&rx_buff[0],4);
 	memcpy(&CRC_16,&rx_buff[4],4);
@@ -333,6 +333,10 @@ uint32_t update_firmware (void)
 	printf(" \r pages: %ld \n",pages);
 	printf(" \r n_bytes: %ld \n",n_bytes);
 	printf(" \r offset: %ld \n",offset);
+
+	HAL_Delay(1000);
+
+	printf("Send OK................. \n\r");
 	HAL_UART_Transmit(&huart2,"OK\n", (sizeof("OK\n")-1),500);
 	memset(rx_buff,'\0',sizeof(rx_buff));
 	wait();
@@ -353,33 +357,28 @@ uint32_t update_firmware (void)
 
 		if(crc == crc_part)
 		{
-			a = write(&rx_buff[8],a);
-
+		  a = write(&rx_buff[8],a);
 		  memset(buffer,'\0',sizeof(buffer));
 		  memset(strnum,'\0',sizeof(strnum));
 		  snprintf(strnum,sizeof(strnum), "%ld",index_page);
-		  //printf("strnum: %s, len: %d \n",strnum,strlen(strnum));
 		  memcpy(&buffer[0], OK, sizeof(OK));
 		  memcpy(&buffer[sizeof(OK)], strnum,strlen(strnum));
-		  printf(" \r %s\r\n",buffer);
+		  printf(" %s\n\r",buffer);
 		  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
-			wait();
-			dato_recivido = false;
-			err = 0;
-			i++;
+		  wait();
+		  dato_recivido = false;
+		  i++;
 		}
 		else
 		{
-			err = 1;
 			i = i;
-			memset(buffer,'\0',sizeof(buffer));
+		  memset(buffer,'\0',sizeof(buffer));
 		  memset(strnum,'\0',sizeof(strnum));
 		  snprintf(strnum,sizeof(strnum), "%ld",index_page);
 		  memcpy(&buffer[0], ERR, sizeof(ERR));
 		  memcpy(&buffer[sizeof(ERR)], strnum,strlen(strnum));
 		  printf(" \r buffer: %s\r\n",buffer);
 		  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
-		  //return -1;
 		}
 
 	}// end while
@@ -408,6 +407,7 @@ uint32_t update_firmware (void)
 		  memcpy(&buffer[sizeof(OK)], strnum,strlen(strnum));
 		  printf(" \r buffer: %s\r\n",buffer);
 		  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
+		  /*
 		  cmd7[0] = crc_rec;
 		  cmd7[1] = 0xFFFFFFFF;
 		  printf("\r ************************************* \r\n");
@@ -418,22 +418,53 @@ uint32_t update_firmware (void)
 		  HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
 		  HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
 		  HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
-		//wait();
-		dato_recivido = false;
-		err = 0;
+		  */
+		 dato_recivido = false;
 		}
-		else{
-			err = 1;
-			memset(buffer,'\0',sizeof(buffer));
-			  memset(strnum,'\0',sizeof(strnum));
-			  snprintf(strnum,sizeof(strnum), "%d",index_page);
-			  memcpy(&buffer[0], ERR, sizeof(ERR));
-			  memcpy(&buffer[sizeof(ERR)], strnum,strlen(strnum));
-			  printf(" \r buffer: %s\r\n",buffer);
-			  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
+		else
+		{
+		  memset(buffer,'\0',sizeof(buffer));
+		  memset(strnum,'\0',sizeof(strnum));
+		  snprintf(strnum,sizeof(strnum), "%d",index_page);
+		  memcpy(&buffer[0], ERR, sizeof(ERR));
+		  memcpy(&buffer[sizeof(ERR)], strnum,strlen(strnum));
+		  printf(" \r buffer: %s\r\n",buffer);
+		  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
 			  //return -1;
 		}
 	}// offset
+
+//--------------------- Check Integration -----------------
+	if(CRC_16 == crc_rec)
+	{
+		printf("\r ************* CRC OK ****************** \r\n");
+		printf(" \r crc rec: %lX \r\n",crc_rec);
+		printf(" \r crc_app: %lX \n",CRC_16);
+		printf("\r ************************************* \r\n");
+		HAL_Delay(2000);
+		cmd7[0] = crc_rec;
+		cmd7[1] = 0xFFFFFFFF;
+		HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+		HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+		HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+		printf("LOADER OK\r\n");
+
+	}
+	else
+	{
+		printf("\r ************* CRC FAIL ****************** \r\n");
+		printf(" \r crc rec: %lX \r\n",crc_rec);
+		printf(" \r crc_app: %lX \n",CRC_16);
+		printf("\r ************************************* \r\n");
+		HAL_Delay(2000);
+		cmd7[0] = 0xFFFFFFFF;
+		cmd7[1] = 0xFFFFFFFF;
+		HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+		HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+		HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+		printf("LOADER FAIL\r\n");
+		//return -1;
+	}
 
 //---------------- Validate -------------------------
 	const image_hdr_t *hdr = NULL;
@@ -449,13 +480,13 @@ uint32_t update_firmware (void)
 		err = -1;
 	}//*/
 // -------------------------- Clone ----------------------------
-	printf("Check Slot 2 \r\n");
-	HAL_Delay(4000);
-	printf("Ready to write to  Slot 1 \r\n");
-	HAL_Delay(4000);
 
 	if((CRC_16 == crc_rec) && (err == 0))
+	{
+		printf("Ready to write to  Slot 1 \r\n");
+		HAL_Delay(2000);
 		err = clone_rom(FW_SIZE);
+	}
 	if ( err == 0)
 	{
 		printf("UPDATE SUCCESSFULLY\r\n");
@@ -550,15 +581,14 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  //MX_GPIO_Init();
+  MX_GPIO_Init();
   MX_USART2_UART_Init();
+  MX_USART6_UART_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
-  MX_USART5_UART_Init();
   MX_TIM15_Init();
   /* USER CODE BEGIN 2 */
-  MX_GPIO_Init_user();
-   RetargetInit(&huart5);
+   RetargetInit(&huart6);
    /*HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 1);
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, 0);
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 0);
@@ -581,7 +611,7 @@ int main(void)
 	while (1)
 	{
 		HAL_Delay(5);
-		boot = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_14);// 1/0
+		boot = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_11);// 1/0
 		printf("\r boot: %d \r\n",boot);
 		bootloader = timer_flag & boot;
 		if(bootloader)
@@ -676,15 +706,12 @@ int main(void)
 			shared_mem_set_app_update_requested(false);
 			shared_mem_set_update();
 			printf("shared_mem_get_update: %d \n\r",shared_mem_get_update());
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 0);//resetea el uC
-			HAL_Delay(2000);
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 1);
 			printf("Reset COMM \n\r");
-			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, 0);//resetea el uC
-			HAL_Delay(2000);
-			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, 1);
-			printf("Shutdown COMM 🐮 \n\r");
-
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);//resetea el uC
+			HAL_Delay(500);
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+			printf("Reset RIO \n\r");
+			HAL_Delay(500);
 			HAL_NVIC_SystemReset();
 		}
 	}
@@ -765,9 +792,9 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 16000-1;
+  htim1.Init.Prescaler = 16-1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 200;
+  htim1.Init.Period = 500;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -933,38 +960,38 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
-  * @brief USART5 Initialization Function
+  * @brief USART6 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_USART5_UART_Init(void)
+static void MX_USART6_UART_Init(void)
 {
 
-  /* USER CODE BEGIN USART5_Init 0 */
+  /* USER CODE BEGIN USART6_Init 0 */
 
-  /* USER CODE END USART5_Init 0 */
+  /* USER CODE END USART6_Init 0 */
 
-  /* USER CODE BEGIN USART5_Init 1 */
+  /* USER CODE BEGIN USART6_Init 1 */
 
-  /* USER CODE END USART5_Init 1 */
-  huart5.Instance = USART5;
-  huart5.Init.BaudRate = 115200;
-  huart5.Init.WordLength = UART_WORDLENGTH_8B;
-  huart5.Init.StopBits = UART_STOPBITS_1;
-  huart5.Init.Parity = UART_PARITY_NONE;
-  huart5.Init.Mode = UART_MODE_TX_RX;
-  huart5.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart5.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart5.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart5.Init.ClockPrescaler = UART_PRESCALER_DIV1;
-  huart5.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart5) != HAL_OK)
+  /* USER CODE END USART6_Init 1 */
+  huart6.Instance = USART6;
+  huart6.Init.BaudRate = 115200;
+  huart6.Init.WordLength = UART_WORDLENGTH_8B;
+  huart6.Init.StopBits = UART_STOPBITS_1;
+  huart6.Init.Parity = UART_PARITY_NONE;
+  huart6.Init.Mode = UART_MODE_TX_RX;
+  huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart6.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart6.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart6.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart6.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart6) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN USART5_Init 2 */
+  /* USER CODE BEGIN USART6_Init 2 */
 
-  /* USER CODE END USART5_Init 2 */
+  /* USER CODE END USART6_Init 2 */
 
 }
 
@@ -983,25 +1010,40 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LTE_ON_GPIO_Port, LTE_ON_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_1, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(RST_COMM_GPIO_Port, RST_COMM_Pin, GPIO_PIN_SET);
 
-  /*Configure GPIO pin : LTE_ON_Pin */
-  GPIO_InitStruct.Pin = LTE_ON_Pin;
+  /*Configure GPIO pin : PA7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LTE_ON_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB0 PB1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : BOOT_Pin */
+  GPIO_InitStruct.Pin = BOOT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(BOOT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RST_COMM_Pin */
   GPIO_InitStruct.Pin = RST_COMM_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(RST_COMM_GPIO_Port, &GPIO_InitStruct);
 
@@ -1036,50 +1078,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
      }
 }
 
-
-
-static void MX_GPIO_Init_user(void)
-{
-	  GPIO_InitTypeDef GPIO_InitStruct = {0};
-	/* USER CODE BEGIN MX_GPIO_Init_1 */
-	/* USER CODE END MX_GPIO_Init_1 */
-
-	  /* GPIO Ports Clock Enable */
-	  __HAL_RCC_GPIOC_CLK_ENABLE();
-	  __HAL_RCC_GPIOD_CLK_ENABLE();
-	  __HAL_RCC_GPIOA_CLK_ENABLE();
-	  __HAL_RCC_GPIOB_CLK_ENABLE();
-
-	  /*Configure GPIO pin Output Level */
-	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_SET);
-
-	  /*Configure GPIO pin Output Level */
-	  HAL_GPIO_WritePin(RST_COMM_GPIO_Port, RST_COMM_Pin, GPIO_PIN_SET);
-
-	  GPIO_InitStruct.Pin = LTE_ON_Pin;
-	  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-	  GPIO_InitStruct.Pull = GPIO_NOPULL;
-	  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	  HAL_GPIO_Init(LTE_ON_GPIO_Port, &GPIO_InitStruct);
-
-
-	  /*Configure GPIO pin : RST_COMM_Pin */
-	  GPIO_InitStruct.Pin = RST_COMM_Pin;
-	  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-	  GPIO_InitStruct.Pull = GPIO_NOPULL;
-	  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	  HAL_GPIO_Init(RST_COMM_GPIO_Port, &GPIO_InitStruct);
-
-	/* USER CODE BEGIN MX_GPIO_Init_2 */
-	/* USER CODE END MX_GPIO_Init_2 */
-  /*Configure GPIO pin : PA14 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-
-}
 
 /* USER CODE END 4 */
 
