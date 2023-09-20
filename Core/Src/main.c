@@ -79,7 +79,7 @@ static void MX_TIM15_Init(void);
 /* USER CODE BEGIN 0 */
 uint64_t * RDAddr = NULL;
 uint64_t double_word = 0;
-bool dato_recivido=false, bootloader = false;
+bool dato_recivido=false, bootloader = false, transmit_data = false;
 uint32_t counter = 0, pages = 0,offset = 0, n_bytes=0,rows = 0;
 uint8_t rx_buff[520]={0x00};//
 uint32_t FW_SIZE = 0, CRC_16 = 0, index_page = 0;
@@ -95,7 +95,13 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
 	  HAL_UARTEx_ReceiveToIdle_IT(&huart2, rx_buff, sizeof rx_buff);
 	  //memcpy(message,rx_buff,4);
-	  dato_recivido = true;
+	  if(transmit_data == false)
+		  dato_recivido = true;
+
+	  if(Size == 520)
+		  dato_recivido = true;
+	  if(Size == (offset+8))
+		  dato_recivido = true;
 	  //counter++;
 }
 
@@ -305,198 +311,204 @@ void wait(void)
 uint32_t update_firmware (void)
 {
 	 uint32_t err = 0;
-	 //uint8_t len=0;
-	 uint8_t buffer[10];
-	 uint8_t strnum[10];
-	 uint8_t OK[3] = {0x4F,0x4B,0x20};
-	 uint8_t ERR[4] = {0x45,0x52,0x52,0x20};
-	 uint32_t cmd7 [2] = {0x00,0x00};
-	 clear_loader_rom();
-	 //CMD 1
-	 HAL_UART_Transmit(&huart2,"FZ\n", (sizeof("FZ\n")-1),500);// begin
-	 printf("\r Send FZ ... \r\n");
-	 wait();
-	 if(flag_break)
-	 {
-		 return 1;
-	 }
-	 dato_recivido = false;
-	 //CMD2
-
-	memcpy(&FW_SIZE,&rx_buff[0],4);
-	memcpy(&CRC_16,&rx_buff[4],4);
-	pages = (uint32_t)(FW_SIZE/512);
-	n_bytes = 512*pages;
-	offset = FW_SIZE - n_bytes;
-	printf(" \r fw_size: %lX \n",FW_SIZE);
-	printf(" \r crc_app: %lX \n",CRC_16);
-	printf(" \r pages: %ld \n",pages);
-	printf(" \r n_bytes: %ld \n",n_bytes);
-	printf(" \r offset: %ld \n",offset);
-
-	HAL_Delay(1000);
-
-	printf("Send OK................. \n\r");
-	HAL_UART_Transmit(&huart2,"OK\n", (sizeof("OK\n")-1),500);
-	memset(rx_buff,'\0',sizeof(rx_buff));
-	wait();
-	 dato_recivido = false;
-
-	 printf(" \r Starting loader.......... \r\n");
-	int i =0;
-	while( i<=pages-1)
-	{
-		memcpy(&index_page,&rx_buff[0],4);
-		memcpy(&crc_part,&rx_buff[4],4);
-		printf(" \r index: %lX \n",index_page);
-		printf(" \r crc_part: %lX \n",crc_part);
-		crc = CRC16_X25(&rx_buff[8], 512, 0);
-		crc_rec = CRC16_X25(&rx_buff[8], 512, crc_rec);
-		printf(" \r crc computed: %X \r\n",crc);
-		printf(" \r crc_rec: %lX \r\n",crc_rec);
-
-		if(crc == crc_part)
-		{
-		  a = write(&rx_buff[8],a);
-		  memset(buffer,'\0',sizeof(buffer));
-		  memset(strnum,'\0',sizeof(strnum));
-		  snprintf(strnum,sizeof(strnum), "%ld",index_page);
-		  memcpy(&buffer[0], OK, sizeof(OK));
-		  memcpy(&buffer[sizeof(OK)], strnum,strlen(strnum));
-		  printf(" %s\n\r",buffer);
-		  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
-		  wait();
-		  dato_recivido = false;
-		  i++;
-		}
-		else
-		{
-			i = i;
-		  memset(buffer,'\0',sizeof(buffer));
-		  memset(strnum,'\0',sizeof(strnum));
-		  snprintf(strnum,sizeof(strnum), "%ld",index_page);
-		  memcpy(&buffer[0], ERR, sizeof(ERR));
-		  memcpy(&buffer[sizeof(ERR)], strnum,strlen(strnum));
-		  printf(" \r buffer: %s\r\n",buffer);
-		  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
-		}
-
-	}// end while
-	if(offset!=0)
-	{
-		printf(" \r --------------Last Page ----------- \n");
-		memcpy(&index_page,&rx_buff[0],4);
-		memcpy(&crc_part,&rx_buff[4],4);
-		printf(" \r index: %lX \n",index_page);
-		printf(" \r crc_part: %lX \n",crc_part);
-		crc = CRC16_X25(&rx_buff[8], offset, 0);//offset
-		crc_rec = CRC16_X25(&rx_buff[8], offset, crc_rec);
-		printf(" \r crc computed: %X \r\n",crc);
-		printf(" \r crc_rec: %lX \r\n",crc_rec);
-
-
-		if(crc == crc_part)
-		{
-			a = write(&rx_buff[8],a);
-
-		  memset(buffer,'\0',sizeof(buffer));
-		  memset(strnum,'\0',sizeof(strnum));
-		  snprintf(strnum,sizeof(strnum), "%d",index_page);
-		  //printf("strnum: %s, len: %d \n",strnum,strlen(strnum));
-		  memcpy(&buffer[0], OK, sizeof(OK));
-		  memcpy(&buffer[sizeof(OK)], strnum,strlen(strnum));
-		  printf(" \r buffer: %s\r\n",buffer);
-		  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
-		  /*
-		  cmd7[0] = crc_rec;
-		  cmd7[1] = 0xFFFFFFFF;
-		  printf("\r ************************************* \r\n");
-		  printf(" \r crc rec: %lX \r\n",crc_rec);
-		  printf(" \r crc_app: %lX \n",CRC_16);
-		  printf("\r ************************************* \r\n");
-		  HAL_Delay(200);
-		  HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
-		  HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
-		  HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
-		  */
+		 //uint8_t len=0;
+		 uint8_t buffer[10];
+		 uint8_t strnum[10];
+		 uint8_t OK[3] = {0x4F,0x4B,0x20};
+		 uint8_t ERR[4] = {0x45,0x52,0x52,0x20};
+		 uint32_t cmd7 [2] = {0x00,0x00};
+		 clear_loader_rom();
+		 //CMD 1
+		 HAL_UART_Transmit(&huart2,"FZ\n", (sizeof("FZ\n")-1),500);// begin
+		 printf("\r Send FZ ... \r\n");
+		 wait();
+		 if(flag_break)
+		 {
+			 return 1;
+		 }
 		 dato_recivido = false;
+		 //CMD2
+
+		memcpy(&FW_SIZE,&rx_buff[0],4);
+		memcpy(&CRC_16,&rx_buff[4],4);
+		pages = (uint32_t)(FW_SIZE/512);
+		n_bytes = 512*pages;
+		offset = FW_SIZE - n_bytes;
+		printf(" \r fw_size: %lX \n",FW_SIZE);
+		printf(" \r crc_app: %lX \n",CRC_16);
+		printf(" \r pages: %ld \n",pages);
+		printf(" \r n_bytes: %ld \n",n_bytes);
+		printf(" \r offset: %ld \n",offset);
+		HAL_Delay(1000);
+
+		printf("Send OK................. \n\r");
+		HAL_UART_Transmit(&huart2,"OK\n", (sizeof("OK\n")-1),500);
+		memset(rx_buff,'\0',sizeof(rx_buff));
+		wait();
+		 dato_recivido = false;
+	     transmit_data = true;
+
+
+		 printf(" \r Starting loader.......... \r\n");
+		while( j<=pages-1)
+		{
+			memcpy(&index_page,&rx_buff[0],4);
+			memcpy(&crc_part,&rx_buff[4],4);
+			printf(" \r index: %ld \n",index_page);
+			printf(" \r crc_part: %lX \n",crc_part);
+			crc = CRC16_X25(&rx_buff[8], 512, 0);
+			printf(" \r crc computed: %X \r\n",crc);
+
+			if((crc == crc_part) && (index_page < pages))
+			{
+			  a = write(&rx_buff[8],a);
+			  crc_rec = CRC16_X25(&rx_buff[8], 512, crc_rec);
+			  printf(" \r crc_rec: %lX \r\n",crc_rec);
+
+			  memset(buffer,'\0',sizeof(buffer));
+			  memset(strnum,'\0',sizeof(strnum));
+			  snprintf(strnum,sizeof(strnum), "%ld",index_page);
+			  memcpy(&buffer[0], OK, sizeof(OK));
+			  memcpy(&buffer[sizeof(OK)], strnum,strlen(strnum));
+			  printf(" %s\n\r",buffer);
+			  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
+			  wait();
+			  dato_recivido = false;
+			  j++;
+			  printf(" j: %d \n\r",j);
+			}
+			else
+			{
+				//i = i;
+			  memset(buffer,'\0',sizeof(buffer));
+			  memset(strnum,'\0',sizeof(strnum));
+			  //snprintf(strnum,sizeof(strnum), "%ld",index_page);
+			  snprintf(strnum,sizeof(strnum), "%d",j);
+			  memcpy(&buffer[0], ERR, sizeof(ERR));
+			  memcpy(&buffer[sizeof(ERR)], strnum,strlen(strnum));
+			  printf(" \r %s\r\n",buffer);
+			  printf(" j: %d \n\r",j);
+			  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
+			}
+
+		}// end while
+	     transmit_data = true;
+
+		if(offset!=0)
+		{
+			printf(" \r --------------Last Page ----------- \n");
+			memcpy(&index_page,&rx_buff[0],4);
+			memcpy(&crc_part,&rx_buff[4],4);
+			printf(" \r index: %lX \n",index_page);
+			printf(" \r crc_part: %lX \n",crc_part);
+			crc = CRC16_X25(&rx_buff[8], offset, 0);//offset
+			printf(" \r crc computed: %X \r\n",crc);
+			printf(" \r crc_rec: %lX \r\n",crc_rec);
+
+
+			if(crc == crc_part)
+			{
+			  a = write(&rx_buff[8],a);
+			  crc_rec = CRC16_X25(&rx_buff[8], offset, crc_rec);
+			  memset(buffer,'\0',sizeof(buffer));
+			  memset(strnum,'\0',sizeof(strnum));
+			  snprintf(strnum,sizeof(strnum), "%d",index_page);
+			  //printf("strnum: %s, len: %d \n",strnum,strlen(strnum));
+			  memcpy(&buffer[0], OK, sizeof(OK));
+			  memcpy(&buffer[sizeof(OK)], strnum,strlen(strnum));
+			  printf(" \r buffer: %s\r\n",buffer);
+			  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
+			  /*
+			  cmd7[0] = crc_rec;
+			  cmd7[1] = 0xFFFFFFFF;
+			  printf("\r ************************************* \r\n");
+			  printf(" \r crc rec: %lX \r\n",crc_rec);
+			  printf(" \r crc_app: %lX \n",CRC_16);
+			  printf("\r ************************************* \r\n");
+			  HAL_Delay(200);
+			  HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+			  HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+			  HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+			  */
+			 dato_recivido = false;
+			}
+			else
+			{
+			  memset(buffer,'\0',sizeof(buffer));
+			  memset(strnum,'\0',sizeof(strnum));
+			  snprintf(strnum,sizeof(strnum), "%d",index_page);
+			  memcpy(&buffer[0], ERR, sizeof(ERR));
+			  memcpy(&buffer[sizeof(ERR)], strnum,strlen(strnum));
+			  printf(" \r buffer: %s\r\n",buffer);
+			  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
+				  //return -1;
+			}
+		}// offset
+
+	//--------------------- Check Integration -----------------
+		if(CRC_16 == crc_rec)
+		{
+			printf("\r ************* CRC OK ****************** \r\n");
+			printf(" \r crc rec: %lX \r\n",crc_rec);
+			printf(" \r crc_app: %lX \n",CRC_16);
+			printf("\r ************************************* \r\n");
+			HAL_Delay(2000);
+			cmd7[0] = crc_rec;
+			cmd7[1] = 0xFFFFFFFF;
+			HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+			HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+			HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+			printf("LOADER OK\r\n");
+
 		}
 		else
 		{
-		  memset(buffer,'\0',sizeof(buffer));
-		  memset(strnum,'\0',sizeof(strnum));
-		  snprintf(strnum,sizeof(strnum), "%d",index_page);
-		  memcpy(&buffer[0], ERR, sizeof(ERR));
-		  memcpy(&buffer[sizeof(ERR)], strnum,strlen(strnum));
-		  printf(" \r buffer: %s\r\n",buffer);
-		  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
-			  //return -1;
+			printf("\r ************* CRC FAIL ****************** \r\n");
+			printf(" \r crc rec: %lX \r\n",crc_rec);
+			printf(" \r crc_app: %lX \n",CRC_16);
+			printf("\r ************************************* \r\n");
+			HAL_Delay(2000);
+			cmd7[0] = 0xFFFFFFFF;
+			cmd7[1] = 0xFFFFFFFF;
+			HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+			HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+			HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
+			printf("LOADER FAIL\r\n");
+			//return -1;
 		}
-	}// offset
 
-//--------------------- Check Integration -----------------
-	if(CRC_16 == crc_rec)
-	{
-		printf("\r ************* CRC OK ****************** \r\n");
-		printf(" \r crc rec: %lX \r\n",crc_rec);
-		printf(" \r crc_app: %lX \n",CRC_16);
-		printf("\r ************************************* \r\n");
-		HAL_Delay(2000);
-		cmd7[0] = crc_rec;
-		cmd7[1] = 0xFFFFFFFF;
-		HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
-		HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
-		HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
-		printf("LOADER OK\r\n");
+	//---------------- Validate -------------------------
+		const image_hdr_t *hdr = NULL;
+		hdr = image_get_header(IMAGE_SLOT_2);//magic
+		if (hdr == NULL)
+		{
+			printf("Magic incorrect \r\n");
+			err =  -1;
+		}
+		if (image_validate(IMAGE_SLOT_2, hdr) != 0)//crc
+		{
+			printf("CRC incorrect \r\n");
+			err = -1;
+		}//*/
+	// -------------------------- Clone ----------------------------
 
-	}
-	else
-	{
-		printf("\r ************* CRC FAIL ****************** \r\n");
-		printf(" \r crc rec: %lX \r\n",crc_rec);
-		printf(" \r crc_app: %lX \n",CRC_16);
-		printf("\r ************************************* \r\n");
-		HAL_Delay(2000);
-		cmd7[0] = 0xFFFFFFFF;
-		cmd7[1] = 0xFFFFFFFF;
-		HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
-		HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
-		HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
-		printf("LOADER FAIL\r\n");
-		//return -1;
-	}
+		if((CRC_16 == crc_rec) && (err == 0))
+		{
+			printf("Ready to write to  Slot 1 \r\n");
+			HAL_Delay(2000);
+			err = clone_rom(FW_SIZE);
+		}
+		if ( err == 0)
+		{
+			printf("UPDATE SUCCESSFULLY\r\n");
+			return 0;
+		}
+		else
+		{
+			printf("UPDATE FAIL\r\n");
+			return -1;
+		}//*/
 
-//---------------- Validate -------------------------
-	const image_hdr_t *hdr = NULL;
-	hdr = image_get_header(IMAGE_SLOT_2);//magic
-	if (hdr == NULL)
-	{
-		printf("Magic incorrect \r\n");
-		err =  -1;
-	}
-	if (image_validate(IMAGE_SLOT_2, hdr) != 0)//crc
-	{
-		printf("CRC incorrect \r\n");
-		err = -1;
-	}//*/
-// -------------------------- Clone ----------------------------
-
-	if((CRC_16 == crc_rec) && (err == 0))
-	{
-		printf("Ready to write to  Slot 1 \r\n");
-		HAL_Delay(2000);
-		err = clone_rom(FW_SIZE);
-	}
-	if ( err == 0)
-	{
-		printf("UPDATE SUCCESSFULLY\r\n");
-		return 0;
-	}
-	else
-	{
-		printf("UPDATE FAIL\r\n");
-		return -1;
-	}//*/
 
 }// get_Firmware()
 
