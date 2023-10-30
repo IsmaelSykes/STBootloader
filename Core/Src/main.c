@@ -180,7 +180,7 @@ uint32_t write(uint8_t *data,uint32_t begin)
 
 void clear_app_rom(void)
 {
-	printf("\r Clean APP_Room \r\n");
+	//printf("\r Clean APP_Room \r\n");
 	FLASH_EraseInitTypeDef EraseInitStruct;
 	uint32_t PageError = 0;
 
@@ -206,7 +206,7 @@ void clear_app_rom(void)
 
 void clear_loader_rom(void)
 {
-	printf("\r Clean Loader_Room \r\n");
+	//printf("\r Clean Loader_Room \r\n");
 	FLASH_EraseInitTypeDef EraseInitStruct;
 	uint32_t PageError = 0;
 	  PageError = 0;
@@ -223,10 +223,13 @@ void clear_loader_rom(void)
 void print_double_word(uint32_t Address,uint64_t *doubleword)
 {
 	uint8_t *ptr = (uint8_t*)doubleword;
-	  	  printf("\r Address: %08lX, Data:  ",Address);
+	  	  //printf("\r Address: %08lX, Data:  ",Address);
 	  	  for(uint8_t k = 0; k < 8; k++)
-	  		  printf("%02X",*(ptr++));
-	  	  printf("|\r\r\n");
+	  	  {
+	  		  //printf("%02X",*(ptr++));
+
+	  	  }
+	  	  //printf("|\r\r\n");
 }
 
 uint32_t clone_rom(uint32_t Firmware_zise)
@@ -237,31 +240,32 @@ uint32_t clone_rom(uint32_t Firmware_zise)
 
 	for(int k = 0; k <5; k++)
 	{
-		printf("\033\143");
-		printf("Cleaning app rom");
+		//printf("\033\143");
+		//printf("Cleaning app rom");
 		for(int q = 0; q<=k; q++)
 		{
-			printf(".");
+			//printf(".");
 			HAL_Delay(50);
 		}
-		printf("\r\n");
+		//printf("\r\n");
 	}
 
 	clear_app_rom();
 
-	printf("\r ------ Reday to Clone to slot 1 ---------- \r\n");
+	/*printf("\r ------ Reday to Clone to slot 1 ---------- \r\n");
 	printf("\r rows: %ld \r\n",rows);
 	printf("\r offset: %ld \r\n",offset);
+	*/
 	for(int k = 0; k <5; k++)
 	{
-		printf("\033\143");
-		printf(" waiting ");
+		//printf("\033\143");
+		//printf(" waiting ");
 		for(int q = 0; q<=k; q++)
 		{
-			printf(".");
+			///printf(".");
 			HAL_Delay(50);
 		}
-		printf("\r\n");
+		//printf("\r\n");
 	}
 
 	HAL_FLASH_Unlock();
@@ -303,11 +307,13 @@ void wait(void)
 	 {
 			for(int z = 0; z <5; z++)
 			{
-				printf("\033\143");
-				printf("\r waiting ");
+				//printf("\033\143");
+				//printf("\r waiting ");
 				for(int q = 0; q<=z; q++)
-					printf(".");
-				printf("\r\n");
+				{
+					//printf(".");
+				}
+				//printf("\r\n");
 				HAL_Delay(10);
 				 if(flag_break)
 				 {
@@ -332,7 +338,7 @@ uint32_t update_firmware (void)
 		 clear_loader_rom();
 		 //CMD 1
 		 HAL_UART_Transmit(&huart2,"FZ\n", (sizeof("FZ\n")-1),500);// begin
-		 printf("\r Send FZ ... \r\n");
+		 //printf("\r Send FZ ... \r\n");
 		 wait();
 		 if(flag_break)
 		 {
@@ -346,48 +352,48 @@ uint32_t update_firmware (void)
 		pages = (uint32_t)(FW_SIZE/512);
 		n_bytes = 512*pages;
 		offset = FW_SIZE - n_bytes;
-		printf(" \r fw_size: %lX \n",FW_SIZE);
+		/*printf(" \r fw_size: %lX \n",FW_SIZE);
 		printf(" \r crc_app: %lX \n",CRC_16);
 		printf(" \r pages: %ld \n",pages);
 		printf(" \r n_bytes: %ld \n",n_bytes);
 		printf(" \r offset: %ld \n",offset);
+		*/
 		HAL_Delay(1000);
 
-		printf("Send OK................. \n\r");
+		//printf("Send OK................. \n\r");
 		HAL_UART_Transmit(&huart2,"OK\n", (sizeof("OK\n")-1),500);
 		memset(rx_buff,'\0',sizeof(rx_buff));
 		wait();
 		 dato_recivido = false;
 	     transmit_data = true;
 
-
-		 printf(" \r Starting loader.......... \r\n");
+		 //printf(" \r Starting loader.......... \r\n");
 		while( j<=pages-1)
 		{
 			memcpy(&index_page,&rx_buff[0],4);
 			memcpy(&crc_part,&rx_buff[4],4);
-			printf(" \r index: %ld \n",index_page);
-			printf(" \r crc_part: %lX \n",crc_part);
+			//printf(" \r index: %ld \n",index_page);
+			//printf(" \r crc_part: %lX \n",crc_part);
 			crc = CRC16_X25(&rx_buff[8], 512, 0);
-			printf(" \r crc computed: %X \r\n",crc);
+			//printf(" \r crc computed: %X \r\n",crc);
 
 			if((crc == crc_part) && (index_page < pages))
 			{
 			  a = write(&rx_buff[8],a);
 			  crc_rec = CRC16_X25(&rx_buff[8], 512, crc_rec);
-			  printf(" \r crc_rec: %lX \r\n",crc_rec);
+			  //printf(" \r crc_rec: %lX \r\n",crc_rec);
 
 			  memset(buffer,'\0',sizeof(buffer));
 			  memset(strnum,'\0',sizeof(strnum));
 			  snprintf(strnum,sizeof(strnum), "%ld",index_page);
 			  memcpy(&buffer[0], OK, sizeof(OK));
 			  memcpy(&buffer[sizeof(OK)], strnum,strlen(strnum));
-			  printf(" %s\n\r",buffer);
+			  //printf(" %s\n\r",buffer);
 			  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
 			  wait();
 			  dato_recivido = false;
 			  j++;
-			  printf(" j: %d \n\r",j);
+			  //printf(" j: %d \n\r",j);
 			}
 			else
 			{
@@ -398,8 +404,8 @@ uint32_t update_firmware (void)
 			  snprintf(strnum,sizeof(strnum), "%d",j);
 			  memcpy(&buffer[0], ERR, sizeof(ERR));
 			  memcpy(&buffer[sizeof(ERR)], strnum,strlen(strnum));
-			  printf(" \r %s\r\n",buffer);
-			  printf(" j: %d \n\r",j);
+			  //printf(" \r %s\r\n",buffer);
+			  //printf(" j: %d \n\r",j);
 			  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
 			}
 
@@ -408,14 +414,14 @@ uint32_t update_firmware (void)
 
 		if(offset!=0)
 		{
-			printf(" \r --------------Last Page ----------- \n");
+			//printf(" \r --------------Last Page ----------- \n");
 			memcpy(&index_page,&rx_buff[0],4);
 			memcpy(&crc_part,&rx_buff[4],4);
-			printf(" \r index: %lX \n",index_page);
-			printf(" \r crc_part: %lX \n",crc_part);
+			//printf(" \r index: %lX \n",index_page);
+			//printf(" \r crc_part: %lX \n",crc_part);
 			crc = CRC16_X25(&rx_buff[8], offset, 0);//offset
-			printf(" \r crc computed: %X \r\n",crc);
-			printf(" \r crc_rec: %lX \r\n",crc_rec);
+			//printf(" \r crc computed: %X \r\n",crc);
+			//printf(" \r crc_rec: %lX \r\n",crc_rec);
 
 
 			if(crc == crc_part)
@@ -428,7 +434,7 @@ uint32_t update_firmware (void)
 			  //printf("strnum: %s, len: %d \n",strnum,strlen(strnum));
 			  memcpy(&buffer[0], OK, sizeof(OK));
 			  memcpy(&buffer[sizeof(OK)], strnum,strlen(strnum));
-			  printf(" \r buffer: %s\r\n",buffer);
+			  //printf(" \r buffer: %s\r\n",buffer);
 			  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
 			  /*
 			  cmd7[0] = crc_rec;
@@ -451,7 +457,7 @@ uint32_t update_firmware (void)
 			  snprintf(strnum,sizeof(strnum), "%d",index_page);
 			  memcpy(&buffer[0], ERR, sizeof(ERR));
 			  memcpy(&buffer[sizeof(ERR)], strnum,strlen(strnum));
-			  printf(" \r buffer: %s\r\n",buffer);
+			  //printf(" \r buffer: %s\r\n",buffer);
 			  HAL_UART_Transmit(&huart2,(uint8_t*)buffer, strlen(buffer),500);
 				  //return -1;
 			}
@@ -460,32 +466,34 @@ uint32_t update_firmware (void)
 	//--------------------- Check Integration -----------------
 		if(CRC_16 == crc_rec)
 		{
-			printf("\r ************* CRC OK ****************** \r\n");
+			/*printf("\r ************* CRC OK ****************** \r\n");
 			printf(" \r crc rec: %lX \r\n",crc_rec);
 			printf(" \r crc_app: %lX \n",CRC_16);
 			printf("\r ************************************* \r\n");
+			*/
 			HAL_Delay(2000);
 			cmd7[0] = crc_rec;
 			cmd7[1] = 0xFFFFFFFF;
 			HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
 			HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
 			HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
-			printf("LOADER OK\r\n");
+			//printf("LOADER OK\r\n");
 
 		}
 		else
 		{
-			printf("\r ************* CRC FAIL ****************** \r\n");
+			/*printf("\r ************* CRC FAIL ****************** \r\n");
 			printf(" \r crc rec: %lX \r\n",crc_rec);
 			printf(" \r crc_app: %lX \n",CRC_16);
 			printf("\r ************************************* \r\n");
+			*/
 			HAL_Delay(2000);
 			cmd7[0] = 0xFFFFFFFF;
 			cmd7[1] = 0xFFFFFFFF;
 			HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
 			HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
 			HAL_UART_Transmit(&huart2,(uint8_t*)cmd7, sizeof(cmd7),500);
-			printf("LOADER FAIL\r\n");
+			//printf("LOADER FAIL\r\n");
 			//return -1;
 		}
 
@@ -494,30 +502,30 @@ uint32_t update_firmware (void)
 		hdr = image_get_header(IMAGE_SLOT_2);//magic
 		if (hdr == NULL)
 		{
-			printf("Magic incorrect \r\n");
+			//printf("Magic incorrect \r\n");
 			err =  -1;
 		}
 		if (image_validate(IMAGE_SLOT_2, hdr) != 0)//crc
 		{
-			printf("CRC incorrect \r\n");
+			//printf("CRC incorrect \r\n");
 			err = -1;
 		}//*/
 	// -------------------------- Clone ----------------------------
 
 		if((CRC_16 == crc_rec) && (err == 0))
 		{
-			printf("Ready to write to  Slot 1 \r\n");
+			//printf("Ready to write to  Slot 1 \r\n");
 			HAL_Delay(2000);
 			err = clone_rom(FW_SIZE);
 		}
 		if ( err == 0)
 		{
-			printf("UPDATE SUCCESSFULLY\r\n");
+			//printf("UPDATE SUCCESSFULLY\r\n");
 			return 0;
 		}
 		else
 		{
-			printf("UPDATE FAIL\r\n");
+			//printf("UPDATE FAIL\r\n");
 			return -1;
 		}//*/
 
@@ -619,7 +627,7 @@ int main(void)
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 0);
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);// BOOT/*/
 
-   printf("\r ------ Start Bootooader ----- \r\n");
+   //printf("\r ------ Start Bootooader ----- \r\n");
    HAL_UARTEx_ReceiveToIdle_IT(&huart2, rx_buff, sizeof rx_buff);
 
   /* USER CODE END 2 */
@@ -637,24 +645,24 @@ int main(void)
 	{
 		HAL_Delay(5);
 		boot = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_14);// 1/0
-		printf("\r boot: %d \r\n",boot);
+		//printf("\r boot: %d \r\n",boot);
 		bootloader = timer_flag & boot;
 		if(bootloader)
 		{
-			printf(" App \n\r");
+			//printf(" App \n\r");
 			HAL_TIM_Base_Stop_IT(&htim1);
 			shared_mem_set_app_update_requested(false);
 		}
 		 if(bootloader == 0)
 		{
-			printf(" \r Bootloader \r\n");
+			//printf(" \r Bootloader \r\n");
 			HAL_TIM_Base_Stop_IT(&htim1);
 			shared_mem_set_app_update_requested(true);
 		}
 
 	    if((flag_break == 1) && (bootloader==0))
 		{
-			printf(" \r App Timer \r\n");
+			//printf(" \r App Timer \r\n");
 			shared_mem_set_app_update_requested(false);
 		}
 
@@ -664,7 +672,7 @@ int main(void)
 		// Load the updater (apparom)
 		if (hdr == NULL)
 		{
-			printf("No image found in slot 2\r\n");
+			//printf("No image found in slot 2\r\n");
 		}
 		else
 		{
@@ -675,7 +683,7 @@ int main(void)
 		//ioport_set_pin_level(RED_LED, false);
 		//ioport_set_pin_level(GREEN_LED, false);
 		//ioport_set_pin_level(BLUE_LED, false);
-		printf("Jumping to updater\r\n");
+		//printf("Jumping to updater\r\n");
 		shared_mem_increment_boot_counter();
 		//printf("Boot count: %d \r\n",shared_mem_get_boot_counter());
 		image_start(hdr);
@@ -688,7 +696,7 @@ int main(void)
 		if (shared_mem_get_boot_counter() >= max_boot_attemps)
 		{
 			shared_mem_clear_boot_counter();
-			printf("App unstable, entering to DFU mode\r\n");
+			//printf("App unstable, entering to DFU mode\r\n");
 			break;
 		}
 
@@ -697,7 +705,7 @@ int main(void)
 		// Load the app (apparom)
 		if (hdr == NULL)
 		{
-			printf("No image found in slot 1\r\n");
+			//printf("No image found in slot 1\r\n");
 			goto invalid;
 			break;
 		}
@@ -712,7 +720,7 @@ int main(void)
 		//ioport_set_pin_level(GREEN_LED, false);
 		//ioport_set_pin_level(BLUE_LED, false);
 
-		printf("Jumping to application\r\n\n");
+		//printf("Jumping to application\r\n\n");
 		shared_mem_increment_boot_counter();
 		//printf("Boot count: %d \r\n",shared_mem_get_boot_counter());
 		image_start(hdr);
@@ -724,21 +732,21 @@ int main(void)
 		if (update_firmware() == 0)
 		{
 			//Clean the variables
-			printf("Update completed, restarting\r\n");
+			//printf("Update completed, restarting\r\n");
 			shared_mem_set_update_completed();
 			shared_mem_clear_boot_counter();
 			shared_mem_clear_ota_info();
 			shared_mem_set_app_update_requested(false);
 			shared_mem_set_update();
-			printf("shared_mem_get_update: %d \n\r",shared_mem_get_update());
+			//printf("shared_mem_get_update: %d \n\r",shared_mem_get_update());
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 0);//resetea el uC
 			HAL_Delay(2000);
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 1);
-			printf("Reset COMM \n\r");
+			//printf("Reset COMM \n\r");
 			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, 0);//resetea el uC
 			HAL_Delay(2000);
 			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, 1);
-			printf("Shutdown COMM 🐮 \n\r");
+			//printf("Shutdown COMM 🐮 \n\r");
 
 			HAL_NVIC_SystemReset();
 		}
@@ -751,7 +759,7 @@ int main(void)
 	HAL_NVIC_SystemReset(); //resetea el uC
 
 	invalid:
-		printf("\r\nFlash a valid application\r\n");
+		//printf("\r\nFlash a valid application\r\n");
 		while (true)
 		{
 			__asm__ __volatile__("");
@@ -1079,12 +1087,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
    if(htim->Instance == TIM15)
      {
-		printf("TIMER15\r\n\n");
-		printf("flag_timer: %d\r\n\n",flag_timer);
+		//printf("TIMER15\r\n\n");
+		//printf("flag_timer: %d\r\n\n",flag_timer);
 		if(flag_timer)
 		{
 			flag_break = 1;
-			printf("flag_break: %d\r\n\n",flag_break);
+			//printf("flag_break: %d\r\n\n",flag_break);
 		}
 		flag_timer = 1;
 

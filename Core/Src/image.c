@@ -61,11 +61,11 @@ int image_validate(image_slot_t slot, const image_hdr_t *hdr)
     uint32_t crc_image = hdr->crc;
 
     if (crc_calc == crc_image) {
-        printf("CRC OK: %lx vs %lx\r\n", crc_image, crc_calc);
+        //printf("CRC OK: %lx vs %lx\r\n", crc_image, crc_calc);
         return 0;
     }
     else {
-        printf("CRC mismatch: %lx vs %lx\r\n", crc_image, crc_calc);
+        //printf("CRC mismatch: %lx vs %lx\r\n", crc_image, crc_calc);
         return -1;
     }
 
