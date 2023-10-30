@@ -86,6 +86,7 @@ uint32_t FW_SIZE = 0, CRC_16 = 0, index_page = 0;
 uint16_t crc = 0,crc_temp = 0, flag_timer = 0;
 uint16_t a = 0, boot = 0,timer_flag=0, flag_break = 0;
 uint32_t crc_part = 0, crc_rec = 0;
+int j =0;
 
 #define STRINGIFY(x) #x
 #define ADD_QUOTES(y) STRINGIFY(y)
@@ -350,7 +351,7 @@ uint32_t update_firmware (void)
 
 
 		 printf(" \r Starting loader.......... \r\n");
-		while( j<=pages-1)
+		while( j <= pages-1)
 		{
 			memcpy(&index_page,&rx_buff[0],4);
 			memcpy(&crc_part,&rx_buff[4],4);
@@ -606,7 +607,7 @@ int main(void)
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 0);
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);// BOOT/*/
 
-   printf("\r ------ Start Bootooader ----- \r\n");
+   printf("\r ------ Start Bootooader RIO ----- \r\n");
    HAL_UARTEx_ReceiveToIdle_IT(&huart2, rx_buff, sizeof rx_buff);
 
   /* USER CODE END 2 */
@@ -898,7 +899,7 @@ static void MX_TIM15_Init(void)
   htim15.Instance = TIM15;
   htim15.Init.Prescaler = 16000-1;
   htim15.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim15.Init.Period = 15000;
+  htim15.Init.Period = 5000;
   htim15.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim15.Init.RepetitionCounter = 0;
   htim15.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
