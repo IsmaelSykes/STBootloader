@@ -46,7 +46,7 @@ void shared_memory_init(void)
 {
   if (shared_data.magic != MAGIC)
   {
-   // printf("Shared memory uninitialized, setting MAGIC\r\n");
+    printf("Shared memory uninitialized, setting MAGIC\r\n");
     memset(&shared_data, 0, sizeof (shared_data_t));
     shared_data.magic = MAGIC;
   }

@@ -57,6 +57,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define WDT_EXT_Pin GPIO_PIN_15
+#define WDT_EXT_GPIO_Port GPIOA
 #define LTE_ON_Pin GPIO_PIN_3
 #define LTE_ON_GPIO_Port GPIOD
 #define RST_COMM_Pin GPIO_PIN_8
