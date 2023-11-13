@@ -59,6 +59,8 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define BOOT_Pin GPIO_PIN_11
 #define BOOT_GPIO_Port GPIOB
+#define WDT_Pin GPIO_PIN_7
+#define WDT_GPIO_Port GPIOC
 #define RST_COMM_Pin GPIO_PIN_7
 #define RST_COMM_GPIO_Port GPIOB
 

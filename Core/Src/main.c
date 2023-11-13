@@ -56,6 +56,7 @@
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim15;
+TIM_HandleTypeDef htim16;
 
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart6;
@@ -72,6 +73,7 @@ static void MX_USART6_UART_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM15_Init(void);
+static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
@@ -298,14 +300,24 @@ void wait(void)
 {
 	 while(dato_recivido == false)
 	 {
-		 printf("\r waiting... \r\n");
-		 HAL_Delay(100);
-		 if(flag_break)
-		 {
-			 break;
-		 }
+		for(int z = 0; z <5; z++)
+		{
+				printf("\033\143");
+				printf("\r waiting ");
+				for(int q = 0; q<=z; q++)
+				{
+						printf(".");
+				}
+				printf("\r\n");
+				HAL_Delay(10);
+				 if(flag_break)
+				 {
+						 return;
+				 }
+		}
+
 	 }
-	HAL_TIM_Base_Stop_IT(&htim15);
+        HAL_TIM_Base_Stop_IT(&htim15);
 
 }
 
@@ -600,6 +612,7 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM3_Init();
   MX_TIM15_Init();
+  MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
    RetargetInit(&huart6);
    /*HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 1);
@@ -899,7 +912,7 @@ static void MX_TIM15_Init(void)
   htim15.Instance = TIM15;
   htim15.Init.Prescaler = 16000-1;
   htim15.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim15.Init.Period = 5000;
+  htim15.Init.Period = 15000;
   htim15.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim15.Init.RepetitionCounter = 0;
   htim15.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -921,6 +934,38 @@ static void MX_TIM15_Init(void)
   /* USER CODE BEGIN TIM15_Init 2 */
 
   /* USER CODE END TIM15_Init 2 */
+
+}
+
+/**
+  * @brief TIM16 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM16_Init(void)
+{
+
+  /* USER CODE BEGIN TIM16_Init 0 */
+
+  /* USER CODE END TIM16_Init 0 */
+
+  /* USER CODE BEGIN TIM16_Init 1 */
+
+  /* USER CODE END TIM16_Init 1 */
+  htim16.Instance = TIM16;
+  htim16.Init.Prescaler = 0;
+  htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim16.Init.Period = 24024;
+  htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim16.Init.RepetitionCounter = 0;
+  htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim16) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM16_Init 2 */
+
+  /* USER CODE END TIM16_Init 2 */
 
 }
 
@@ -1031,6 +1076,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_1, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(WDT_GPIO_Port, WDT_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(RST_COMM_GPIO_Port, RST_COMM_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : PA7 */
@@ -1052,6 +1100,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(BOOT_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : WDT_Pin */
+  GPIO_InitStruct.Pin = WDT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(WDT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RST_COMM_Pin */
   GPIO_InitStruct.Pin = RST_COMM_Pin;
@@ -1089,6 +1144,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		flag_timer = 1;
 
      }
+
+	if(htim->Instance == TIM16)
+	  {
+		HAL_GPIO_TogglePin(WDT_GPIO_Port, WDT_Pin);
+	  }
 }
 
 
